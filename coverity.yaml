@@ -1,0 +1,130 @@
+# coverity-go-dvwa.yaml
+version: 1
+analyze:
+  # enable webapp security checkers for web-related findings
+  checkers:
+    # Indicates whether all checkers should be enabled.
+    all: true
+    # Indicates whether all security checkers should be enabled. This includes
+    # the Security, Android Security, and Web App Security categories, and
+    # other security checkers that require explicit enablement.
+    all-security: true
+    # If set to true, enables android security checkers.
+    android-security: true
+    # Enables C, C++ concurrency checkers that are disabled by default.
+    concurrency: true
+    # Enables C, C++ concurrency checkers that are disabled by default.
+    concurrency: true
+    # Specifies whether to enable the default set of checkers. If set to true,
+    # the default set of checkers is enabled. Set to false to get more control
+    # over which checkers are enabled.
+    default: true
+    # Enables or disables PMD for Apex analysis.
+    pmd: true
+    # Enables or disables recommended security checkers.
+    recommended-security-checkers: true
+    # Enables C, C++ rule checkers.
+    rule: true
+    # Specifies how web application security analysis should be done.
+    webapp-security:
+      # Enables the checkers that are used for web application security
+      # analysis.
+      enabled: true
+      # Sets the web application checkers aggressiveness level.
+      # Valid values:
+      #   low
+      #   medium
+      #   high
+      aggressiveness-level: high
+  # Specifies options for Sigma analysis.
+  sigma:
+    # Base check set to enable.
+    # Valid values:
+    #   all
+    #   cis
+    #   default
+    #   empty
+    base-check-set: all
+    # List of check sets to enable in addition to the base set.
+    # Valid values:
+    #   all
+    #   cis
+    #   default
+    #   empty
+    enable-check-set:
+      - all
+      # List of files containing malicious URL patterns.
+      ##malicious-url-patterns-file:
+  # This is a map from trust option name to boolean to indicate whether the
+  # particular trust property should be trusted or distrusted. The trust option
+  # "all" controls whether all trust options should be trusted or distrusted.
+  trust:
+    all: false
+  # limit analysis to project files (optional)
+  files:
+    exclude-glob: "testdata/*"
+  # Specifies analysis worker parallelism.
+  jobs:
+    # If true, the number of analysis workers to run in parallel is based on
+    # the amount of memory and number of logical processors in the machine.
+    # This is the default for a non-Flexnet license. This key is mutually
+    # exclusive with the "count" and "max" keys.
+    auto: true
+  # Specifies whether the analysis should be done locally, in Coverity Connect,
+  # or in Software Risk Manager. The possible values are as follows: connect -
+  # Run the analysis in the Coverity Connect job farm; srm - Run the analysis
+  # in the Software Risk Manager job farm; local - Run the analysis locally
+  # Valid values:
+  #   local
+  #   connect
+  #   srm
+  location: local
+  # Analysis mode: "pfi" (perfect fidelity incremental) for complete analysis;
+  # or "hfi" (high fidelity incremental) for analysis of only specific files
+  # specified by analyze.files settings, omitting any other files which may
+  # have been incidentally captured by the build. An "hfi" analysis can be
+  # faster but may produce results which are incomplete or inconsistent, due to
+  # the lack of context, and should be used only when speed is more important
+  # than accuracy.
+  # Valid values:
+  #   hfi
+  #   pfi
+  mode: pfi
+  # If specified, the analysis will scan the code for compliance according to
+  # the given coding standard configuration. If this configuration is present,
+  # the capture "emit-complementary-info" flag will be set to true.
+  coding-standards:
+    misrac2023:
+      # This key specifies the name of a "pre-canned" coding standard
+      # configuration to use. The available pre-canned coding standard
+      # configurations depend on the coding standard in question. Refer to
+      # Coverity's documentation for details on the "pre-canned"
+      # configurations.
+      # Valid values:
+      #   all
+      #   all-deviations
+      #   mandatory-only
+      #   mandatory-required
+      pre-canned: all
+
+    misracpp2023:
+      # This key specifies the name of a "pre-canned" coding standard
+      # configuration to use. The available pre-canned coding standard
+      # configurations depend on the coding standard in question. Refer to
+      # Coverity's documentation for details on the "pre-canned"
+      # configurations.
+      # Valid values:
+      #   all
+      #   all-deviations
+      #   mandatory-only
+      #   mandatory-required
+      pre-canned: all
+commit:
+  connect:
+    project: "qemu"
+    stream: "qemu"
+    # auth-key-file: auth-key-file.txt
+    # If true, analysis results will not be committed to Coverity Connect.
+    # Instead, results compared to a reference snapshot may be saved locally as
+    # specified by the "commit.local" settings.
+    ##comparison-only: <value>

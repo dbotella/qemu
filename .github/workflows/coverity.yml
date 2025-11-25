@@ -49,7 +49,6 @@ jobs:
           du -sh .git
           echo "::endgroup::"
           echo "::group::Running configure"
-          ./autogen.sh
           mkdir -p build
           cd build
           ../configure --enable-werror --disable-docs --enable-fdt=system \
