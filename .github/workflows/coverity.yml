@@ -1,0 +1,131 @@
+name: Coverity Scan
+
+on:
+  pull_request:
+    paths:
+      - "**"
+      - "!docs/**"
+      - "!src/win/**"
+      - "!.**"
+      - ".github/workflows/coverity.yml"
+  push:
+    branches:
+      - v[0-9].*
+      - master
+  workflow_dispatch:
+
+jobs:
+  coverity-scan:
+    runs-on: self-hosted
+    timeout-minutes: 240
+    environment: COVERITY
+    env:
+      TMPDIR: ${{ github.workspace }}/.tmp
+    steps:
+      - name: Checkout Source
+        uses: actions/checkout@v6
+        with:
+          submodules: recursive
+      - name: Setup Build Environment
+        run: |
+          mkdir -p "${TMPDIR}"
+          git config --global --add safe.directory "$(pwd)"
+          if [ -n "${{ vars.COVERITY_PATH }}" ]; then
+            echo "${{ vars.COVERITY_PATH }}/bin" >> $GITHUB_PATH
+          fi
+          JOBS=$(expr $(nproc) + 1)
+          echo "JOBS=$JOBS" >> $GITHUB_ENV
+      - name: Restore Coverity IDIR Cache
+        uses: actions/cache@v4
+        id: cache-idir
+        with:
+          path: .bridge/coverity_connect_scan/**/idir
+          key: coverity-idir-${{ github.event.repository.name }}-${{ github.base_ref || github.ref_name }}
+          restore-keys: |
+            coverity-idir-${{ github.event.repository.name }}-
+      - name: Configure Build
+        run: |
+          echo "::group::Pre-script setup"
+          du -sh .git
+          echo "::endgroup::"
+          echo "::group::Running configure"
+          ./autogen.sh
+          mkdir -p build
+          cd build
+          ../configure --enable-werror --disable-docs --enable-fdt=system \
+              --disable-debug-info \
+              || { cat config.log meson-logs/meson-log.txt && exit 1; }
+          if [ -n "$LD_JOBS" ]; then
+            pyvenv/bin/meson configure . -Dbackend_max_links="$LD_JOBS" || exit 1
+          fi
+          echo "::endgroup::"
+      - name: Verify Coverity Secrets and Paths
+        run: |
+          echo "::group::Verifying Coverity configuration"
+          echo "Current working directory: $(pwd)"
+          echo "Workspace: ${{ github.workspace }}"
+          echo "Listing files in workspace:"
+          ls -la ${{ github.workspace }} | head -20
+          echo "Checking for coverity scripts:"
+          ls -la ${{ github.workspace }}/coverity-*.sh || echo "Scripts not found in workspace"
+          if [ -z "${{ secrets.COVERITY_URL }}" ]; then
+            echo "ERROR: COVERITY_URL secret is not set or is empty"
+            exit 1
+          fi
+          if [ -z "${{ secrets.COVERITY_USER }}" ]; then
+            echo "ERROR: COVERITY_USER secret is not set or is empty"
+            exit 1
+          fi
+          if [ -z "${{ secrets.COVERITY_PASSPHRASE }}" ]; then
+            echo "ERROR: COVERITY_PASSPHRASE secret is not set or is empty"
+            exit 1
+          fi
+          if [ -n "${{ vars.COVERITY_PATH }}" ] && [ ! -d "${{ vars.COVERITY_PATH }}" ]; then
+            echo "ERROR: COVERITY_PATH directory does not exist: ${{ vars.COVERITY_PATH }}"
+            exit 1
+          fi
+          if [ -n "${{ vars.BRIDGECLI_PATH }}" ] && [ ! -d "${{ vars.BRIDGECLI_PATH }}" ]; then
+            echo "ERROR: BRIDGECLI_PATH directory does not exist: ${{ vars.BRIDGECLI_PATH }}"
+            exit 1
+          fi
+          echo "✓ All Coverity secrets and paths are configured"
+          echo "::endgroup::"
+      - name: Coverity Scan
+        uses: blackduck-inc/black-duck-security-scan@v2.1.0
+        with:
+          coverity_url: ${{ secrets.COVERITY_URL }}
+          coverity_user: ${{ secrets.COVERITY_USER }}
+          coverity_passphrase: ${{ secrets.COVERITY_PASSPHRASE }}
+          coverity_project_name: ${{ github.event.repository.name }}
+          coverity_stream_name: ${{ github.event.repository.name }}-${{ github.base_ref || github.ref_name }}
+          coverity_policy_view: "(Global) Newly Introduced Defects"
+          coverity_prComment_enabled: ${{ github.event_name == 'pull_request' }}
+          github_token: ${{ secrets.TOKEN }}
+          coverity_config_path: coverity.yaml
+          coverity_local: true
+          coverity_install_directory: ${{ vars.COVERITY_PATH }}
+          bridgecli_install_directory: ${{ vars.BRIDGECLI_PATH }}
+          network_airgap: true
+          coverity_build_command: bash ${{ github.workspace }}/coverity-build.sh
+          coverity_clean_command: bash ${{ github.workspace }}/coverity-clean.sh
+          include_diagnostics: false
+          mark_build_status: "success"
+      - name: Save Coverity IDIR Cache
+        if: always()
+        uses: actions/cache@v4
+        with:
+          path: .bridge/coverity_connect_scan/**/idir
+          key: coverity-idir-${{ github.event.repository.name }}-${{ github.base_ref || github.ref_name }}
+      - name: Save Logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bridge-logs
+          path: .bridge/coverity_connect_scan/
+          exclude: |
+            **/*.log
+            **/*.tmp
+            **/build-log.txt
+            **/idir/*
+          include-hidden-files: true
+          retention-days: 30
