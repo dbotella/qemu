@@ -24,6 +24,8 @@ if [ ! -f build/Makefile ]; then
   cd ..
 fi
 
-# Build with distcheck
-$MAKE -C build distcheck -j"$JOBS" 
+# Build QEMU
+cd build
+$MAKE -j"$JOBS"
+cd .. 
 
