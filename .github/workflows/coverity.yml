@@ -43,6 +43,20 @@ jobs:
           key: coverity-idir-${{ github.event.repository.name }}-${{ github.base_ref || github.ref_name }}
           restore-keys: |
             coverity-idir-${{ github.event.repository.name }}-
+      - name: Install Build Dependencies
+        run: |
+          echo "::group::Installing build dependencies"
+          if command -v apt-get >/dev/null 2>&1; then
+            sudo apt-get update
+            sudo apt-get install -y libfdt-dev
+          elif command -v yum >/dev/null 2>&1; then
+            sudo yum install -y dtc-devel
+          elif command -v dnf >/dev/null 2>&1; then
+            sudo dnf install -y dtc-devel
+          else
+            echo "Warning: Could not detect package manager. libfdt may not be installed."
+          fi
+          echo "::endgroup::"
       - name: Configure Build
         run: |
           echo "::group::Pre-script setup"
